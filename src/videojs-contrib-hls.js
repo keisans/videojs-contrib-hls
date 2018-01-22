@@ -11,7 +11,7 @@ import xhrFactory from './xhr';
 import {Decrypter, AsyncStream, decrypt} from 'aes-decrypter';
 import utils from './bin-utils';
 import {MediaSource, URL} from 'videojs-contrib-media-sources';
-import m3u8 from 'm3u8-parser';
+import m3u8 from '@rstruhl/m3u8-parser';
 import videojs from 'video.js';
 import { MasterPlaylistController } from './master-playlist-controller';
 import Config from './config';
@@ -260,7 +260,7 @@ class HlsHandler extends Component {
        this.options_.bandwidth === INITIAL_BANDWIDTH;
 
     // grab options passed to player.src
-    ['withCredentials', 'bandwidth'].forEach((option) => {
+    ['withCredentials', 'bandwidth', 'customTagParsers'].forEach((option) => {
       if (typeof this.source_[option] !== 'undefined') {
         this.options_[option] = this.source_[option];
       }

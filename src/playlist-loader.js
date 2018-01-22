@@ -7,7 +7,7 @@
  */
 import resolveUrl from './resolve-url';
 import { mergeOptions, EventTarget, log } from 'video.js';
-import m3u8 from 'm3u8-parser';
+import m3u8 from '@rstruhl/m3u8-parser';
 import window from 'global/window';
 
 /**
@@ -178,12 +178,13 @@ export const refreshDelay = (media, update) => {
  * @constructor
  */
 export default class PlaylistLoader extends EventTarget {
-  constructor(srcUrl, hls, withCredentials) {
+  constructor(srcUrl, hls, withCredentials, customTagParsers) {
     super();
 
     this.srcUrl = srcUrl;
     this.hls_ = hls;
     this.withCredentials = withCredentials;
+    this.customTagParsers = customTagParsers;
 
     if (!this.srcUrl) {
       throw new Error('A non-empty playlist URL is required');
@@ -247,6 +248,11 @@ export default class PlaylistLoader extends EventTarget {
     this.state = 'HAVE_METADATA';
 
     const parser = new m3u8.Parser();
+    if (this.customTagParsers && this.customTagParsers.length) {
+      this.customTagParsers.forEach((customTag) => {
+        parser.addParser(customTag)
+      })
+    }
 
     parser.push(xhr.responseText);
     parser.end();

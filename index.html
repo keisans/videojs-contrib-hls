@@ -30,13 +30,12 @@
     <p>Due to security restrictions in Flash, you will have to load this page over HTTP(S) to see the example in action.</p>
   </div>
   <video id="videojs-contrib-hls-player" class="video-js vjs-default-skin" controls>
-    <source src="https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8" type="application/x-mpegURL">
   </video>
 
   <form id=load-url>
     <label>
       Video URL:
-      <input id=url type=url value="https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8">
+      <input id=url type=url value="https://playback-qa.a-live.io/8e197ebe2e7b403a826488ac97498668/us-west-2/NA/profile_0/chunklist_vod.m3u8">
     </label>
     <button type=submit>Load</button>
   </form>
@@ -51,6 +50,28 @@
   <script>
     (function(window, videojs) {
       var player = window.player = videojs('videojs-contrib-hls-player');
+      var customTagz = [
+        {
+          expression: /^#VOD-TIMING/,
+          customType: 'vodTiming',
+          dataParser: (line) => {
+            const regex = /#VOD-TIMING:(?:timecode=([^,\n]+))?(?:,?wallclock=([^,\n]+))?(?:,?tsvideo=([^,\n]+))?(?:,?tsaudio=([^,\n]+))?/g
+            const sp = regex.exec(line);
+            return {
+              timecode: sp[1],
+              wallclock: sp[2],
+              tsvideo: sp[3],
+              tsaudio: sp[4]
+            };
+          },
+          segment: true
+        }
+      ];
+      player.src({
+        src: "https://playback-qa.a-live.io/ccf2b889503e4af0a583c81740ad87bf/us-west-2/NA/profile_0/chunklist_vod.m3u8",
+        type: 'application/x-mpegURL',
+        customTagParsers: customTagz
+      })
 
       // hook up the video switcher
       var loadUrl = document.getElementById('load-url');
@@ -59,10 +80,32 @@
         event.preventDefault();
         player.src({
           src: url.value,
-          type: 'application/x-mpegURL'
+          type: 'application/x-mpegURL',
+          customTagParsers: customTagz
         });
         return false;
       });
+
+      player.on('loadedmetadata', function() {
+        let tracks = player.textTracks();
+        let segmentMetadataTrack;
+
+        for (let i = 0; i < tracks.length; i++) {
+          if (tracks[i].label === 'segment-metadata') {
+            segmentMetadataTrack = tracks[i];
+          }
+        }
+        if (segmentMetadataTrack) {
+          segmentMetadataTrack.on('cuechange', function() {
+            let active = segmentMetadataTrack.activeCues[0].value;
+            let custom = active.custom;
+
+            const wallclockInt = parseInt(custom.vodTiming.wallclock, 10);
+            const wcDate = new Date(wallclockInt);
+            console.log(wcDate);
+          })
+        }
+      })
     }(window, window.videojs));
   </script>
 </body>
