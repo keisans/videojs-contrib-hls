@@ -248,10 +248,11 @@ export default class PlaylistLoader extends EventTarget {
     this.state = 'HAVE_METADATA';
 
     const parser = new m3u8.Parser();
+
     if (this.customTagParsers && this.customTagParsers.length) {
       this.customTagParsers.forEach((customTag) => {
-        parser.addParser(customTag)
-      })
+        parser.addParser(customTag);
+      });
     }
 
     parser.push(xhr.responseText);

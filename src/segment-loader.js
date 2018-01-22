@@ -1312,10 +1312,14 @@ export default class SegmentLoader extends videojs.EventTarget {
       uri: segmentInfo.uri,
       timeline: segmentInfo.timeline,
       playlist: segmentInfo.playlist.uri,
-      custom: segment.custom,
       start,
       end
     };
+
+    if (segment.custom) {
+      value.custom = segment.custom;
+    }
+
     const data = JSON.stringify(value);
     const cue = new Cue(start, end, data);
 
