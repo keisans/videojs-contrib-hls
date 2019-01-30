@@ -6,7 +6,7 @@
  */
 import resolveUrl from './resolve-url';
 import { mergeOptions, EventTarget, log } from 'video.js';
-import m3u8 from '@rstruhl/m3u8-parser';
+import m3u8 from 'm3u8-parser';
 import window from 'global/window';
 
 /**
