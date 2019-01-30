@@ -10,7 +10,7 @@ import videojs from 'video.js';
 import AdCueTags from './ad-cue-tags';
 import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
-import worker from 'webworkify';
+import worker from 'webwackify';
 import Decrypter from './decrypter-worker';
 import Config from './config';
 import { parseCodecs } from './util/codecs.js';
@@ -41,6 +41,18 @@ const loaderStats = [
 const sumLoaderStat = function(stat) {
   return this.audioSegmentLoader_[stat] +
          this.mainSegmentLoader_[stat];
+};
+
+const resolveDecrypterWorker = () => {
+  let result;
+
+  try {
+    result = require.resolve('./decrypter-worker');
+  } catch (e) {
+    // no result
+  }
+
+  return result;
 };
 
 /**
@@ -211,7 +223,7 @@ export const mimeTypesForPlaylist_ = function(master, media) {
 };
 
 /**
- * the master playlist controller controller all interactons
+ * the master playlist controller controls all interactons
  * between playlists and segmentloaders. At this time this mainly
  * involves a master playlist and a series of audio playlists
  * if they are available
@@ -225,6 +237,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     let {
       url,
+      handleManifestRedirects,
       withCredentials,
       mode,
       tech,
@@ -242,13 +255,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     Hls = externHls;
 
-    this.withCredentials = withCredentials;
     this.tech_ = tech;
     this.hls_ = tech.hls;
     this.mode_ = mode;
     this.useCueTags_ = useCueTags;
     this.blacklistDuration = blacklistDuration;
     this.enableLowInitialPlaylist = enableLowInitialPlaylist;
+
     if (this.useCueTags_) {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
@@ -256,7 +269,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     this.requestOptions_ = {
-      withCredentials: this.withCredentials,
+      withCredentials,
+      handleManifestRedirects,
       timeout: null
     };
 
@@ -276,7 +290,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       label: 'segment-metadata'
     }, false).track;
 
-    this.decrypter_ = worker(Decrypter);
+    this.decrypter_ = worker(Decrypter, resolveDecrypterWorker());
 
     const segmentLoaderSettings = {
       hls: this.hls_,
@@ -296,7 +310,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_ = new PlaylistLoader(
       url,
       this.hls_,
-      this.withCredentials,
+      this.requestOptions_,
       customTagParsers
     );
     this.setupMasterPlaylistLoaderListeners_();
@@ -773,7 +787,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // code in video.js but is required because play() must be invoked
     // *after* the media source has opened.
     if (this.tech_.autoplay()) {
-      this.tech_.play();
+      const playPromise = this.tech_.play();
+
+      // Catch/silence error when a pause interrupts a play request
+      // on browsers which return a promise
+      if (typeof playPromise !== 'undefined' && typeof playPromise.then === 'function') {
+        playPromise.then(null, (e) => {});
+      }
     }
 
     this.trigger('sourceopen');
